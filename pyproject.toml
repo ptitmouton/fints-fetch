@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fints-fetch"
+version = "0.1.0"
+description = "Fetch bank balances and transactions via FinTS/HBCI, output as JSON"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "FinTS Fetch" }]
+keywords = ["fints", "hbci", "banking", "mt940", "camt053"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+]
+dependencies = [
+    "fints>=4.0,<6",
+    "fints-url>=0.7",
+    "mt-940>=4.20,<5",
+    "lxml>=4.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "pytest-cov>=4",
+]
+
+[project.scripts]
+fints-fetch = "fints_fetch.cli:main"
+
+[project.urls]
+Homepage = "https://example.invalid/fints-fetch"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true
+source = ["fints_fetch"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

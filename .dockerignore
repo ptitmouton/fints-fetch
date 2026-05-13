@@ -1,0 +1,38 @@
+# VCS
+.git
+.gitignore
+
+# Python caches
+__pycache__
+*.py[cod]
+*.egg-info
+.eggs
+build
+dist
+.tox
+.venv
+venv
+
+# Test / coverage artefacts
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov
+.mypy_cache
+.ruff_cache
+
+# Editor / OS junk
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Runtime state — never bake into the image
+.fints_state
+*.fints_state
+
+# Docs that don't belong in the image
+docs
+
+# CI configuration
+.github
