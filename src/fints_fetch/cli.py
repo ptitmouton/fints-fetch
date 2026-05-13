@@ -108,10 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--enddate",
         type=str,
         default=None,
-        help=(
-            "Fetch transactions up to this end date (YYYYMMDD). "
-            "Defaults to today."
-        ),
+        help=("Fetch transactions up to this end date (YYYYMMDD). Defaults to today."),
     )
     p.add_argument(
         "--persist-state",
@@ -201,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
 
         output = [
             {
-                "account_info": fetch_account_info(
+                "accountInfo": fetch_account_info(
                     client, account, days=args.days, enddate=enddate
                 )
             }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import signal
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,32 @@ DEFAULT_STATE_FILE = Path(
 
 # --- TAN handling ------------------------------------------------------------
 
+_DECOUPLED_TIMEOUT = 300  # seconds
+
+
+def _wait_for_decoupled_confirmation() -> None:
+    """Block until Enter is pressed, or raise TimeoutError after 5 minutes.
+
+    Uses SIGALRM on Unix. On platforms without it (Windows) the timeout is
+    skipped and the prompt blocks indefinitely, preserving existing behaviour.
+    """
+    if not hasattr(signal, "SIGALRM"):
+        input("After approving the request in your banking app, press Enter... ")
+        return
+
+    def _handle_alarm(signum, frame):  # noqa: ARG001
+        raise TimeoutError(
+            f"No confirmation received after {_DECOUPLED_TIMEOUT // 60} minutes."
+        )
+
+    old_handler = signal.signal(signal.SIGALRM, _handle_alarm)
+    signal.alarm(_DECOUPLED_TIMEOUT)
+    try:
+        input("After approving the request in your banking app, press Enter... ")
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
+
 
 def ask_for_tan(client: FinTS3PinTanClient, response: NeedTANResponse) -> Any:
     """Resolve a single NeedTANResponse via stdin.
@@ -49,7 +76,7 @@ def ask_for_tan(client: FinTS3PinTanClient, response: NeedTANResponse) -> Any:
     print(response.challenge)
 
     if response.decoupled:
-        input("After approving the request in your banking app, press Enter... ")
+        _wait_for_decoupled_confirmation()
         return client.send_tan(response, "")
     tan = input("Enter TAN: ").strip()
     return client.send_tan(response, tan)

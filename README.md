@@ -49,34 +49,34 @@ fints-fetch [-h] [--bank NAME] [--blz BLZ] [--iban IBAN] [--days DAYS]
 Provide one of `--bank` or `--blz` (or the equivalent env vars). `--blz`
 takes precedence.
 
-| Flag | Notes |
-| --- | --- |
+| Flag          | Notes                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--bank NAME` | Case-insensitive substring of the bank name, e.g. `gls`, `sparkasse berlin`. The lookup uses the [fints-url] database (~1 400 German banks). Raises an error if the name is ambiguous; use `--blz` to disambiguate. |
-| `--blz BLZ` | Exact eight-digit Bankleitzahl, e.g. `43060967`. |
+| `--blz BLZ`   | Exact eight-digit Bankleitzahl, e.g. `43060967`.                                                                                                                                                                    |
 
 ### Options
 
-| Flag | Default | Notes |
-| --- | --- | --- |
-| `--iban` | all | Repeat the flag or pass `DE12...,DE34...`. Whitespace and case are normalised, so pasting from a statement is fine. |
-| `--days` | `30` | Number of days of transactions to fetch, ending at `--enddate`. |
-| `--enddate` | today | `YYYYMMDD`. Transactions are fetched for `[enddate-days, enddate]`. |
-| `--persist-state` | off | Saves the chosen TAN mechanism / medium and the dialog system ID to `$FINTS_STATE_FILE` so later runs don't re-prompt. The PIN is **never** persisted. |
-| `-v` / `--verbose` | off | Forward python-fints INFO logs to stderr. |
+| Flag               | Default | Notes                                                                                                                                                  |
+| ------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--iban`           | all     | Repeat the flag or pass `DE12...,DE34...`. Whitespace and case are normalised, so pasting from a statement is fine.                                    |
+| `--days`           | `30`    | Number of days of transactions to fetch, ending at `--enddate`.                                                                                        |
+| `--enddate`        | today   | `YYYYMMDD`. Transactions are fetched for `[enddate-days, enddate]`.                                                                                    |
+| `--persist-state`  | off     | Saves the chosen TAN mechanism / medium and the dialog system ID to `$FINTS_STATE_FILE` so later runs don't re-prompt. The PIN is **never** persisted. |
+| `-v` / `--verbose` | off     | Forward python-fints INFO logs to stderr.                                                                                                              |
 
 Status messages go to **stderr**, JSON goes to **stdout**, so piping is safe.
 
 ### Environment variables
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `FINTS_BANK` | — | Bank name (same substring matching as `--bank`) |
-| `FINTS_BLZ` | — | Exact Bankleitzahl (overrides `FINTS_BANK`) |
-| `FINTS_URL` | _(from database)_ | Override the FinTS endpoint URL directly |
-| `FINTS_USER` | _prompt_ | Login alias / VR-NetKey |
-| `FINTS_PIN` | _prompt_ | Online banking PIN |
-| `FINTS_PRODUCT_ID` | placeholder | **Strongly recommended.** Register one at <https://www.hbci-zka.de/register/prod_register.htm>; some banks reject calls without a registered ID. |
-| `FINTS_STATE_FILE` | `~/.fints_state` | Where `--persist-state` writes. |
+| Variable           | Default           | Purpose                                                                                                                                          |
+| ------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `FINTS_BANK`       | —                 | Bank name (same substring matching as `--bank`)                                                                                                  |
+| `FINTS_BLZ`        | —                 | Exact Bankleitzahl (overrides `FINTS_BANK`)                                                                                                      |
+| `FINTS_URL`        | _(from database)_ | Override the FinTS endpoint URL directly                                                                                                         |
+| `FINTS_USER`       | _prompt_          | Login alias / VR-NetKey                                                                                                                          |
+| `FINTS_PIN`        | _prompt_          | Online banking PIN                                                                                                                               |
+| `FINTS_PRODUCT_ID` | placeholder       | **Strongly recommended.** Register one at <https://www.hbci-zka.de/register/prod_register.htm>; some banks reject calls without a registered ID. |
+| `FINTS_STATE_FILE` | `~/.fints_state`  | Where `--persist-state` writes.                                                                                                                  |
 
 ---
 
@@ -87,18 +87,18 @@ A JSON array, one entry per account:
 ```json
 [
   {
-    "account_info": {
+    "accountInfo": {
       "iban": "DE24430609671310166000",
       "currentBalance": [
-        {"type": "booked", "date": "20251101", "value": "74670%2F100%3AEUR"},
-        {"type": "noted",  "date": "20251101", "value": "74670%2F100%3AEUR"}
+        { "type": "booked", "date": "20251101", "value": "74670%2F100%3AEUR" },
+        { "type": "noted", "date": "20251101", "value": "74670%2F100%3AEUR" }
       ],
       "balance": [
-        {"type": "finalOpening",        "date": "20251002", "value": "..."},
-        {"type": "intermediateClosing", "date": "20251002", "value": "..."},
-        {"type": "intermediateOpening", "date": "20251003", "value": "..."},
-        {"type": "finalClosing",        "date": "20251101", "value": "..."},
-        {"type": "available",           "date": "20251101", "value": "..."}
+        { "type": "finalOpening", "date": "20251002", "value": "..." },
+        { "type": "intermediateClosing", "date": "20251002", "value": "..." },
+        { "type": "intermediateOpening", "date": "20251003", "value": "..." },
+        { "type": "finalClosing", "date": "20251101", "value": "..." },
+        { "type": "available", "date": "20251101", "value": "..." }
       ],
       "transaction": [
         {
@@ -122,9 +122,9 @@ A JSON array, one entry per account:
 
 The HKSAL snapshot — at most two entries:
 
-| `type`   | Source | Meaning |
-| --- | --- | --- |
-| `booked` | always | The current booked balance |
+| `type`   | Source   | Meaning                                                            |
+| -------- | -------- | ------------------------------------------------------------------ |
+| `booked` | always   | The current booked balance                                         |
 | `noted`  | optional | The noted (pending / vorgemerkt) balance, when the bank returns it |
 
 ### `balance`
@@ -133,17 +133,17 @@ Every per-statement balance the bank embedded in the transaction
 response, in document order. The `type` codes differ slightly depending
 on whether the bank serves MT940 (HKKAZ) or camt053 XML (HKCAZ):
 
-| MT940 | camt053 | Meaning |
-| --- | --- | --- |
-| `finalOpening` (`:60F:`) | `opening` (OPBD) | Opening balance of the range |
-| `intermediateOpening` (`:60M:`) | `interim` (ITBD) | Per-day / sub-statement opening |
-| `finalClosing` (`:62F:`) | `closing` (CLBD) | Closing balance of the range |
-| `intermediateClosing` (`:62M:`) | _(no separate code)_ | Per-day sub-statement closing |
-| `available` (`:64:`) | `closingAvailable` (CLAV) | Currently available balance |
-| `forwardAvailable` (`:65:`) | `forwardAvailable` (FWAV) | Future-dated available balance |
-| — | `previouslyClosed` (PRCD) | Closing balance of the previous period |
-| — | `interimAvailable` (ITAV) | Per-day available balance |
-| — | `info` (INFO) | Informational |
+| MT940                           | camt053                   | Meaning                                |
+| ------------------------------- | ------------------------- | -------------------------------------- |
+| `finalOpening` (`:60F:`)        | `opening` (OPBD)          | Opening balance of the range           |
+| `intermediateOpening` (`:60M:`) | `interim` (ITBD)          | Per-day / sub-statement opening        |
+| `finalClosing` (`:62F:`)        | `closing` (CLBD)          | Closing balance of the range           |
+| `intermediateClosing` (`:62M:`) | _(no separate code)_      | Per-day sub-statement closing          |
+| `available` (`:64:`)            | `closingAvailable` (CLAV) | Currently available balance            |
+| `forwardAvailable` (`:65:`)     | `forwardAvailable` (FWAV) | Future-dated available balance         |
+| —                               | `previouslyClosed` (PRCD) | Closing balance of the previous period |
+| —                               | `interimAvailable` (ITAV) | Per-day available balance              |
+| —                               | `info` (INFO)             | Informational                          |
 
 If your bank splits the response per booking day you'll see one opening +
 closing per day; if it returns one statement covering the whole range
@@ -186,14 +186,14 @@ docker run --rm -it \
   -e FINTS_PIN='YourOnlineBankingPIN' \
   -e FINTS_PRODUCT_ID='YourRegisteredProductID' \
   -v fints-fetch-state:/state \
-  fints-fetch --bank gls --days 30
+  ghcr.io/ptitmouton/fints-fetch --bank gls --days 30
 ```
 
 Pre-built multi-arch images (`linux/amd64`, `linux/arm64`) are published
 to the GitHub Container Registry on every release:
 
 ```bash
-docker pull ghcr.io/<owner>/<repo>:latest
+docker pull ghcr.io/ptitmouton/fints-fetch
 ```
 
 The image is multi-stage, slim, and runs as a non-root user (UID 10001).
