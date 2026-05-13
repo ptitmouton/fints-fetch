@@ -6,7 +6,6 @@ on:
       - "v*"
 
 jobs:
-  # ── Python package → GitHub Release ────────────────────────────────────────
   release:
     runs-on: ubuntu-latest
     permissions:
@@ -34,7 +33,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-  # ── Docker image → GitHub Container Registry (multi-arch) ──────────────────
   docker:
     runs-on: ubuntu-latest
     permissions:

@@ -1,10 +1,9 @@
-# gls-fints
+# fints-fetch
 
-A small command-line tool that talks to **GLS Bank** over the German
+A small command-line tool that talks to any German bank over the
 **FinTS / HBCI** protocol via [python-fints], fetches balances and
 transactions for one or more accounts, and prints the result as JSON to
-stdout. Built for the SecureGo plus *decoupled* TAN flow ("Direktfreigabe")
-that GLS made mandatory on 2025-08-01.
+stdout.
 
 This is a developer-oriented proof of concept. It is not a banking app
 and it is not for production payments — read [§ Limitations](#limitations)
@@ -17,21 +16,22 @@ before relying on it.
 ```bash
 pip install -e .
 
-export GLS_USER='YourVRNetKey'           # or your alias
-export GLS_PIN='YourOnlineBankingPIN'    # optional; otherwise prompted
-gls-fints --days 30
+export FINTS_USER='YourLoginAlias'
+export FINTS_PIN='YourOnlineBankingPIN'
+fints-fetch --bank 'gls' --days 30
 ```
 
-The first time you connect, python-fints needs to pick a TAN mechanism
-(choose **SecureGo plus**) and possibly a TAN medium. Pass
-`--persist-state` to remember the choice for next time. After the very
-first run and again roughly every 90 days, the bank will require a TAN on
-login per PSD2.
+`--bank` accepts a case-insensitive substring of the bank's name. Use
+`--blz` for an exact Bankleitzahl lookup instead. The first time you
+connect, python-fints needs to pick a TAN mechanism and possibly a TAN
+medium; pass `--persist-state` to remember the choice for next time.
+After the very first run and again roughly every 90 days, your bank will
+require a TAN on login per PSD2.
 
 Pipe the JSON straight into something useful:
 
 ```bash
-gls-fints --days 90 \
+fints-fetch --bank 'gls' --days 90 \
   | jq '.[] | .account_info | {iban, txns: (.transaction | length)}'
 ```
 
@@ -40,9 +40,21 @@ gls-fints --days 90 \
 ## CLI
 
 ```text
-gls-fints [-h] [--iban IBAN] [--days DAYS] [--enddate ENDDATE]
-          [--persist-state] [-v] [--version]
+fints-fetch [-h] [--bank NAME] [--blz BLZ] [--iban IBAN] [--days DAYS]
+            [--enddate ENDDATE] [--persist-state] [-v] [--version]
 ```
+
+### Bank selection
+
+Provide one of `--bank` or `--blz` (or the equivalent env vars). `--blz`
+takes precedence.
+
+| Flag | Notes |
+| --- | --- |
+| `--bank NAME` | Case-insensitive substring of the bank name, e.g. `gls`, `sparkasse berlin`. The lookup uses the [fints-url] database (~1 400 German banks). Raises an error if the name is ambiguous; use `--blz` to disambiguate. |
+| `--blz BLZ` | Exact eight-digit Bankleitzahl, e.g. `43060967`. |
+
+### Options
 
 | Flag | Default | Notes |
 | --- | --- | --- |
@@ -58,11 +70,12 @@ Status messages go to **stderr**, JSON goes to **stdout**, so piping is safe.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `GLS_USER` | _prompt_ | VR-NetKey or alias |
-| `GLS_PIN` | _prompt_ | Online banking PIN |
+| `FINTS_BANK` | — | Bank name (same substring matching as `--bank`) |
+| `FINTS_BLZ` | — | Exact Bankleitzahl (overrides `FINTS_BANK`) |
+| `FINTS_URL` | _(from database)_ | Override the FinTS endpoint URL directly |
+| `FINTS_USER` | _prompt_ | Login alias / VR-NetKey |
+| `FINTS_PIN` | _prompt_ | Online banking PIN |
 | `FINTS_PRODUCT_ID` | placeholder | **Strongly recommended.** Register one at <https://www.hbci-zka.de/register/prod_register.htm>; some banks reject calls without a registered ID. |
-| `FINTS_BLZ` | `43060967` | GLS Bank. Other Atruvia banks should also work. |
-| `FINTS_URL` | `https://fints1.atruvia.de/cgi-bin/hbciservlet` | Atruvia endpoint. The old `hbci-pintan.gad.de` was retired in March 2024. |
 | `FINTS_STATE_FILE` | `~/.fints_state` | Where `--persist-state` writes. |
 
 ---
@@ -132,10 +145,10 @@ on whether the bank serves MT940 (HKKAZ) or camt053 XML (HKCAZ):
 | — | `interimAvailable` (ITAV) | Per-day available balance |
 | — | `info` (INFO) | Informational |
 
-Most modern Atruvia banks (GLS included) serve **camt053**. If your bank
-splits the response per booking day, you'll see one opening + closing per
-day; if it returns one statement covering the whole range, you'll only
-see the range-wide variants. The `date` on each entry tells you which.
+If your bank splits the response per booking day you'll see one opening +
+closing per day; if it returns one statement covering the whole range
+you'll only see the range-wide variants. The `date` on each entry tells
+you which.
 
 ### Values
 
@@ -166,14 +179,21 @@ keys: `date`, `valutaDate`, `value`, `localAccountNumber`, `remoteIban`,
 ## Docker
 
 ```bash
-docker build -t gls-fints .
+docker build -t fints-fetch .
 
 docker run --rm -it \
-  -e GLS_USER='YourVRNetKey' \
-  -e GLS_PIN='YourOnlineBankingPIN' \
+  -e FINTS_USER='YourLoginAlias' \
+  -e FINTS_PIN='YourOnlineBankingPIN' \
   -e FINTS_PRODUCT_ID='YourRegisteredProductID' \
-  -v gls-fints-state:/state \
-  gls-fints --days 30
+  -v fints-fetch-state:/state \
+  fints-fetch --bank gls --days 30
+```
+
+Pre-built multi-arch images (`linux/amd64`, `linux/arm64`) are published
+to the GitHub Container Registry on every release:
+
+```bash
+docker pull ghcr.io/<owner>/<repo>:latest
 ```
 
 The image is multi-stage, slim, and runs as a non-root user (UID 10001).
@@ -187,27 +207,29 @@ required because TAN prompts read from stdin.
 
 ```bash
 pip install -e '.[dev]'
-pytest -q                  # 67 tests, < 1 s
-pytest --cov=gls_fints     # with branch coverage
+pytest -q                     # 82 tests, < 1 s
+pytest --cov=fints_fetch      # with branch coverage
 ```
 
 The test suite focuses on the parts that have actually broken during
 development: the per-statement balance capture (MT940 + camt053, no
 leak across runs, cleanup on exception), the JSON shaping helpers
-(empty-Balance2 edge cases, sign handling), and the CLI's IBAN
-normalisation. It does **not** hit a real bank — that's left to manual
+(empty-Balance2 edge cases, sign handling), the CLI's IBAN normalisation,
+and the bank resolver (BLZ lookup, name substring matching, ambiguity
+handling). It does **not** hit a real bank — that's left to manual
 integration testing.
 
 ### Project layout
 
 ```
-gls-fints/
+fints-fetch/
 ├── pyproject.toml
 ├── Dockerfile
 ├── README.md
-├── src/gls_fints/
+├── src/fints_fetch/
 │   ├── __init__.py
-│   ├── __main__.py           # `python -m gls_fints`
+│   ├── __main__.py           # `python -m fints_fetch`
+│   ├── bank.py               # BLZ / name → (blz, fints_url) resolver
 │   ├── cli.py                # argparse + main()
 │   ├── client.py             # TAN, state, fetch_account_info
 │   ├── capture.py            # MT940 + camt053 balance capture
@@ -215,7 +237,7 @@ gls-fints/
 └── tests/
     ├── conftest.py           # fixtures (sample MT940 + camt053 payloads)
     ├── test_capture.py
-    ├── test_cli.py
+    ├── test_cli.py           # includes bank resolver tests
     └── test_output.py
 ```
 
@@ -223,19 +245,18 @@ gls-fints/
 
 ## Limitations
 
-- **Read-only.** The script only queries balances and transactions. No
+- **Read-only.** The tool only queries balances and transactions. No
   transfers, no standing orders, no SEPA payments. python-fints can do
   those, but this PoC explicitly doesn't.
-- **GLS / Atruvia only.** Hard-coded URL and default BLZ. Other Atruvia
-  banks may work by overriding `FINTS_BLZ` / `FINTS_URL`. Banks on a
-  different processor (Finanz Informatik / Sparkassen, Fiducia, etc.)
-  will need a different endpoint and may need other tweaks.
+- **German banks only.** FinTS / HBCI is a German standard. The bank
+  database covers ~1 400 institutions, but banks on processors other than
+  the ones in the database (or foreign banks) won't be found.
 - **No product ID by default.** The placeholder might still work for
   light personal use but is not appropriate for shipped products. Register
   one and set `FINTS_PRODUCT_ID`.
-- **Interactive TAN.** SecureGo plus decoupled approval still needs you
-  to confirm on your phone. The non-decoupled fallback (e.g. Sm@rtTAN
-  via chipcard reader) reads the TAN from stdin.
+- **Interactive TAN.** Decoupled TAN methods (e.g. SecureGo plus) still
+  need you to confirm on your phone. Non-decoupled methods (e.g. Sm@rtTAN
+  via chipcard reader) read the TAN from stdin.
 - **No retry / scheduling.** Designed to be run by hand or a wrapper
   (cron, systemd timer, CI). It doesn't handle rate limiting or partial
   failures beyond surfacing them in the JSON as `*Error` keys.
@@ -247,3 +268,4 @@ gls-fints/
 MIT.
 
 [python-fints]: https://github.com/raphaelm/python-fints
+[fints-url]: https://github.com/dr-duplo/python-fints-url
