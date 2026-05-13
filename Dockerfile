@@ -3,19 +3,19 @@
 # Multi-stage build:
 #   - `builder` installs the project into an isolated venv
 #   - the runtime image copies that venv into a clean slim image, drops
-#     privileges, and runs `gls-fints` as the entrypoint
+#     privileges, and runs `fints-fetch` as the entrypoint
 #
 # Build:
-#   docker build -t gls-fints .
+#   docker build -t fints-fetch .
 #
 # Run interactively (TAN prompts go to stdin):
 #   docker run --rm -it \
-#     -e GLS_USER=YourVRNetKey \
-#     -e GLS_PIN=YourOnlineBankingPIN \
+#     -e FINTS_USER=YourLoginAlias \
+#     -e FINTS_PIN=YourOnlineBankingPIN \
 #     -e FINTS_PRODUCT_ID=YourRegisteredProductID \
-#     -v gls-fints-state:/state \
+#     -v fints-fetch-state:/state \
 #     -e FINTS_STATE_FILE=/state/fints_state \
-#     gls-fints --days 30
+#     fints-fetch --bank gls --days 30
 #
 # The named volume is needed if you pass --persist-state, so the bootstrap
 # (TAN mechanism / medium choice) survives container restarts.
@@ -57,5 +57,5 @@ COPY --from=builder /opt/venv /opt/venv
 USER app
 WORKDIR /home/app
 
-ENTRYPOINT ["gls-fints"]
+ENTRYPOINT ["fints-fetch"]
 CMD ["--help"]

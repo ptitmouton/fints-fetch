@@ -1,0 +1,87 @@
+name: Bump Version
+
+# Bumps the version in source files, commits, tags vX.Y.Z, and pushes.
+# The resulting tag push triggers the Build workflow automatically when
+# a GH_PAT secret is configured (a fine-grained PAT with Contents: write).
+# With the default GITHUB_TOKEN the commit and tag land correctly, but the
+# Build workflow must be triggered manually from the Actions tab.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version component to increment"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Use a PAT so the tag push triggers the Build workflow.
+          # Falls back to GITHUB_TOKEN (build must then be run manually).
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Compute new version
+        id: ver
+        run: |
+          python3 - <<'PYEOF'
+          import re, os
+
+          with open("pyproject.toml") as f:
+              text = f.read()
+          match = re.search(r'^version = "([^"]+)"', text, re.MULTILINE)
+          if not match:
+              raise SystemExit("Could not find version in pyproject.toml")
+
+          major, minor, patch = (int(x) for x in match.group(1).split("."))
+          bump = "${{ inputs.bump }}"
+
+          if bump == "major":
+              major, minor, patch = major + 1, 0, 0
+          elif bump == "minor":
+              minor, patch = minor + 1, 0
+          else:
+              patch = patch + 1
+
+          version = f"{major}.{minor}.{patch}"
+          print(f"Bumping {bump}: {match.group(1)} → {version}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"version={version}\n")
+          PYEOF
+
+      - name: Update version in source files
+        run: |
+          python3 - <<'PYEOF'
+          import re
+
+          version = "${{ steps.ver.outputs.version }}"
+          updates = [
+              ("pyproject.toml",              r'^version = ".*"',     f'version = "{version}"'),
+              ("src/fints_fetch/__init__.py", r'^__version__ = ".*"', f'__version__ = "{version}"'),
+          ]
+          for path, pattern, replacement in updates:
+              with open(path) as f:
+                  text = f.read()
+              with open(path, "w") as f:
+                  f.write(re.sub(pattern, replacement, text, count=1, flags=re.MULTILINE))
+          PYEOF
+
+      - name: Commit, tag and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml src/fints_fetch/__init__.py
+          git commit -m "chore: bump version to ${{ steps.ver.outputs.version }}"
+          git tag "v${{ steps.ver.outputs.version }}"
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin "v${{ steps.ver.outputs.version }}"
